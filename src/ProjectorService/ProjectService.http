@@ -1,6 +1,13 @@
-@ProjectService_HostAddress = http://localhost:5244
+@ProjectorService_HostAddress = http://localhost:5244
 
-GET {{ProjectService_HostAddress}}/weatherforecast/
+### Get account balance
+GET {{ProjectorService_HostAddress}}/api/accounts/acct-001/balance
 Accept: application/json
 
-###
+### Get account event history
+GET {{ProjectorService_HostAddress}}/api/accounts/acct-001/events
+Accept: application/json
+
+### Health check
+GET {{ProjectorService_HostAddress}}/health
+Accept: application/json

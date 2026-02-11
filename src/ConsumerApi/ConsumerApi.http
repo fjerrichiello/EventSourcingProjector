@@ -1,6 +1,9 @@
 @ConsumerApi_HostAddress = http://localhost:5021
 
-GET {{ConsumerApi_HostAddress}}/weatherforecast/
+### Get account notifications
+GET {{ConsumerApi_HostAddress}}/api/accounts/acct-001/notifications
 Accept: application/json
 
-###
+### Health check
+GET {{ConsumerApi_HostAddress}}/health
+Accept: application/json

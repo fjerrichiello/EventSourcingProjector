@@ -1,6 +1,35 @@
 @RequestApi_HostAddress = http://localhost:5102
 
-GET {{RequestApi_HostAddress}}/weatherforecast/
-Accept: application/json
+### Deposit $1000 to account
+POST {{RequestApi_HostAddress}}/api/accounts/acct-001/transactions
+Content-Type: application/json
 
-###
+{
+  "type": "deposit",
+  "amount": 1000.00,
+  "description": "Initial deposit"
+}
+
+### Deposit $500 to account
+POST {{RequestApi_HostAddress}}/api/accounts/acct-001/transactions
+Content-Type: application/json
+
+{
+  "type": "deposit",
+  "amount": 500.00,
+  "description": "Paycheck"
+}
+
+### Debit $200 from account
+POST {{RequestApi_HostAddress}}/api/accounts/acct-001/transactions
+Content-Type: application/json
+
+{
+  "type": "debit",
+  "amount": 200.00,
+  "description": "Grocery store"
+}
+
+### Health check
+GET {{RequestApi_HostAddress}}/health
+Accept: application/json
