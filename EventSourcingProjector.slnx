@@ -5,6 +5,7 @@
     <Project Path="src/ConsumerApi/ConsumerApi.csproj" />
     <Project Path="src/ProjectorService/ProjectorService.csproj" />
     <Project Path="src/RequestApi/RequestApi.csproj" />
+    <Project Path="src/RequestSender/RequestSender.csproj" />
     <Project Path="src/TransactionService/TransactionService.csproj" />
   </Folder>
 </Solution>

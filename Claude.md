@@ -36,7 +36,7 @@ Four separate .NET 8 minimal API services, orchestrated via Docker Compose along
 
 ### Flow
 
-1. **Requests API** receives an HTTP request (deposit or debit), validates the basic shape, and publishes a raw event to the `account-transactions` Kafka topic. It is purely a passthrough — no database interaction. Returns 202 Accepted.
+1. **Requests API** receives an HTTP request (credit or debit), validates the basic shape, and publishes a raw event to the `account-transactions` Kafka topic. It is purely a passthrough — no database interaction. Returns 202 Accepted.
 2. **Transaction Service** consumes from `account-transactions` in bulk (thousands of events concurrently). It appends events to the `event_store` table in PostgreSQL (append-only inserts, no reads, no calculations). After successfully writing to the event store, it publishes to the `event-stored` Kafka topic. This is safe at high concurrency because it's only doing inserts.
 3. **Projector Service** consumes from `event-stored`, partitioned by `account_id`. It processes events **one at a time per account** (Kafka partition ordering guarantees this). For each event it: reads the current projected balance, calculates the new balance, updates the `projected_state` table, and publishes an enriched event (with `balance_before` and `balance_after`) to the `account-balance-events` Kafka topic. Steps 2-4 happen in a single database transaction.
 4. **Notification Consumer** consumes from `account-balance-events`. This represents downstream systems. For this demo, it should log the enriched events and expose a simple GET endpoint to see recent events for an account.
@@ -278,7 +278,7 @@ CREATE TABLE event_store (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     account_id VARCHAR(50) NOT NULL,
     sequence_num BIGINT NOT NULL,
-    event_type VARCHAR(50) NOT NULL,       -- 'deposit', 'debit', 'account_opened'
+    event_type VARCHAR(50) NOT NULL,       -- 'credit', 'debit', 'account_opened'
     amount DECIMAL(18, 2) NOT NULL,
     description VARCHAR(500),
     correlation_id UUID NOT NULL,          -- ties back to the original request
@@ -331,7 +331,7 @@ public record TransactionRequested
 {
     public Guid CorrelationId { get; init; } = Guid.NewGuid();
     public required string AccountId { get; init; }
-    public required string EventType { get; init; }  // "deposit" or "debit"
+    public required string EventType { get; init; }  // "credit" or "debit"
     public required decimal Amount { get; init; }
     public string? Description { get; init; }
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
@@ -379,12 +379,12 @@ public record BalanceChanged
 
 **Endpoints:**
 
-- `POST /api/accounts/{accountId}/transactions` — accepts `{ "type": "deposit|debit", "amount": 100.00, "description": "ATM deposit" }`, validates, publishes `TransactionRequested` to `account-transactions` topic with `accountId` as the Kafka message key. Returns 202 Accepted with the correlation ID.
+- `POST /api/accounts/{accountId}/transactions` — accepts `{ "type": "credit|debit", "amount": 100.00, "description": "ATM credit" }`, validates, publishes `TransactionRequested` to `account-transactions` topic with `accountId` as the Kafka message key. Returns 202 Accepted with the correlation ID.
 - `GET /health` — basic health check
 
 **Key behavior:**
 - No database connection at all
-- Validate that `type` is "deposit" or "debit", `amount` is positive, `accountId` is not empty
+- Validate that `type` is "credit" or "debit", `amount` is positive, `accountId` is not empty
 - Serialize events as JSON
 - Use `accountId` as the Kafka partition key so all events for the same account go to the same partition
 
@@ -551,7 +551,7 @@ public class NotificationDbContext : DbContext
 
 2. **The Projector must NOT use `EnableAutoCommit`.** It should manually commit offsets after successfully processing and persisting each event. This ensures at-least-once delivery. Combined with the idempotency check (skip if sequence already processed), this gives you effectively-once processing.
 
-3. **Amount sign convention:** Store deposits as positive amounts and debits as negative amounts in the event store. This simplifies the projector calculation to just `new_balance = current_balance + amount`.
+3. **Amount sign convention:** Store credits as positive amounts and debits as negative amounts in the event store. This simplifies the projector calculation to just `new_balance = current_balance + amount`.
 
 4. **Sequence gaps in the Projector:** If the Projector receives sequence 5 but has only processed through 3, it should NOT skip to 5. It should wait/retry for sequence 4. This can happen if the Transaction Service published to Kafka but the message for sequence 4 was delayed. A simple approach: if there's a gap, don't commit the Kafka offset and let it re-deliver.
 
@@ -564,15 +564,15 @@ public class NotificationDbContext : DbContext
 After `docker compose up`:
 
 ```bash
-# Create a deposit
+# Create a credit
 curl -X POST http://localhost:5001/api/accounts/acct-001/transactions \
   -H "Content-Type: application/json" \
-  -d '{"type": "deposit", "amount": 1000.00, "description": "Initial deposit"}'
+  -d '{"type": "credit", "amount": 1000.00, "description": "Initial credit"}'
 
-# Create another deposit
+# Create another credit
 curl -X POST http://localhost:5001/api/accounts/acct-001/transactions \
   -H "Content-Type: application/json" \
-  -d '{"type": "deposit", "amount": 500.00, "description": "Paycheck"}'
+  -d '{"type": "credit", "amount": 500.00, "description": "Paycheck"}'
 
 # Create a debit
 curl -X POST http://localhost:5001/api/accounts/acct-001/transactions \
@@ -596,11 +596,11 @@ curl http://localhost:5004/api/accounts/acct-001/notifications
 To verify the system handles high concurrency correctly, send many simultaneous transactions to the same account and confirm the final balance is correct:
 
 ```bash
-# Send 100 concurrent $10 deposits to the same account
+# Send 100 concurrent $10 credits to the same account
 for i in $(seq 1 100); do
   curl -s -X POST http://localhost:5001/api/accounts/acct-test/transactions \
     -H "Content-Type: application/json" \
-    -d '{"type": "deposit", "amount": 10.00, "description": "Test deposit '$i'"}' &
+    -d '{"type": "credit", "amount": 10.00, "description": "Test credit '$i'"}' &
 done
 wait
 

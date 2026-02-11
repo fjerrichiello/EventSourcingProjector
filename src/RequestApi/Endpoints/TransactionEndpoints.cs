@@ -22,8 +22,8 @@ public static class TransactionEndpoints
                 return Results.BadRequest(new { error = "Amount must be greater than zero" });
 
             var eventType = request.Type?.ToLowerInvariant();
-            if (eventType is not ("deposit" or "debit"))
-                return Results.BadRequest(new { error = "Type must be 'deposit' or 'debit'" });
+            if (eventType is not ("credit" or "debit"))
+                return Results.BadRequest(new { error = "Type must be 'credit' or 'debit'" });
 
             var transactionEvent = new TransactionRequested
             {
