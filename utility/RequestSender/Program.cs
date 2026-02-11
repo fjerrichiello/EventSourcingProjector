@@ -11,8 +11,8 @@ var _httpClient = new HttpClient
 
 var targetUrlFormat = "http://localhost:5001/api/accounts/{0}/transactions";
 
-int totalRequests = 1000;
-int maxConcurrency = 10;
+int totalRequests = 50_000;
+int maxConcurrency = 1000;
 
 var semaphore = new SemaphoreSlim(maxConcurrency);
 var tasks = new List<Task>();
