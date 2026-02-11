@@ -1,19 +1,18 @@
 using Common.Events;
 using Common.Kafka;
 using RequestApi.Models;
+using RequestApi.Producers;
 
 namespace RequestApi.Endpoints;
 
 public static class TransactionEndpoints
 {
-    private const string Topic = "account-transactions";
-
     public static void MapTransactionEndpoints(this WebApplication app)
     {
         app.MapPost("/api/accounts/{accountId}/transactions", async (
             string accountId,
             CreateTransactionRequest request,
-            IKafkaProducer<TransactionRequested> producer) =>
+            ITransactionEventsProducer producer) =>
         {
             if (string.IsNullOrWhiteSpace(accountId))
                 return Results.BadRequest(new { error = "accountId is required" });
@@ -33,7 +32,7 @@ public static class TransactionEndpoints
                 Description = request.Description
             };
 
-            await producer.ProduceAsync(Topic, accountId, transactionEvent);
+            await producer.PublishAsync(transactionEvent);
 
             return Results.Accepted(value: new { correlationId = transactionEvent.CorrelationId });
         });

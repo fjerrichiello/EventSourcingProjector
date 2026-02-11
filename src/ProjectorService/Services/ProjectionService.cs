@@ -3,30 +3,19 @@ using Common.Kafka;
 using DbMigrator.Entities;
 using Microsoft.EntityFrameworkCore;
 using ProjectorService.Persistence;
+using ProjectorService.Producers;
 
 namespace ProjectorService.Services;
 
-public class ProjectionService
+public class ProjectionService(
+    ProjectorDbContext _dbContext,
+    IBalanceChangedEventsProducer _producer,
+    ILogger<ProjectionService> _logger)
 {
-    private readonly ProjectorDbContext _dbContext;
-    private readonly IKafkaProducer<BalanceChanged> _producer;
-    private readonly ILogger<ProjectionService> _logger;
-    private const string Topic = "account-balance-events";
-
-    public ProjectionService(
-        ProjectorDbContext dbContext,
-        IKafkaProducer<BalanceChanged> producer,
-        ILogger<ProjectionService> logger)
-    {
-        _dbContext = dbContext;
-        _producer = producer;
-        _logger = logger;
-    }
-
-    public async Task ProjectEventAsync(EventStored evt, CancellationToken ct)
+    public async Task ProjectEventAsync(EventStored evt)
     {
         var state = await _dbContext.ProjectedStates
-            .FindAsync([evt.AccountId], ct);
+            .FindAsync([evt.AccountId]);
 
         if (state is null)
         {
@@ -65,7 +54,7 @@ public class ProjectionService
         state.LastProcessedSequence = evt.SequenceNum;
         state.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation(
             "Projected event for {AccountId}: seq={Seq}, balance {Before} -> {After}",
@@ -85,6 +74,6 @@ public class ProjectionService
             Timestamp = DateTimeOffset.UtcNow
         };
 
-        await _producer.ProduceAsync(Topic, evt.AccountId, balanceChanged, ct);
+        await _producer.PublishAsync(balanceChanged);
     }
 }

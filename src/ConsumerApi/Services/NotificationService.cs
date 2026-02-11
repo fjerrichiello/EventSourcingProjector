@@ -16,7 +16,7 @@ public class NotificationService
         _logger = logger;
     }
 
-    public async Task ProcessBalanceChangedAsync(BalanceChanged evt, CancellationToken ct)
+    public async Task ProcessBalanceChangedAsync(BalanceChanged evt)
     {
         var entry = new BalanceEventLog
         {
@@ -31,7 +31,7 @@ public class NotificationService
         };
 
         _dbContext.BalanceEventLogs.Add(entry);
-        await _dbContext.SaveChangesAsync(ct);
+        await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation(
             "Notification: account {AccountId} {EventType} {Amount:C}, balance {Before:C} -> {After:C}",

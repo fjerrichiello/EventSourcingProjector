@@ -29,6 +29,7 @@ public abstract class KafkaConsumerBase<T> : BackgroundService
 
         var config = new ConsumerConfig
         {
+            
             BootstrapServers = _bootstrapServers,
             GroupId = _groupId,
             AutoOffsetReset = AutoOffsetReset.Earliest,
