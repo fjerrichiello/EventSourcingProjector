@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Common/Common.csproj" />
+    <Project Path="src/DbMigrator/DbMigrator.csproj" />
+    <Project Path="src/ConsumerApi/ConsumerApi.csproj" />
+    <Project Path="src/ProjectorService/ProjectorService.csproj" />
+    <Project Path="src/RequestApi/RequestApi.csproj" />
+    <Project Path="src/TransactionService/TransactionService.csproj" />
+  </Folder>
+</Solution>

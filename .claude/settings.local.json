@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet package search:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet build:*)"
+    ]
+  }
+}
